@@ -82,7 +82,7 @@ Easy Hosts is a modern cross-platform desktop application that simplifies manage
 
 #### Windows
 
-1. **Download** the Windows installer (.msi or .exe) from the [Releases](https://github.com/yourusername/easyhosts/releases) page
+1. **Download** the Windows installer (.msi or .exe) from the [Releases](https://github.com/gaon12/easyhosts/releases) page
 2. **Run** the installer and follow the setup wizard
 3. **Launch** Easy Hosts as Administrator (right-click → "Run as administrator")
 4. **Follow** the onboarding tutorial on first launch
