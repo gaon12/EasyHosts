@@ -136,7 +136,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({
                                             title="Restore this backup"
                                             style={{ padding: '8px 16px', fontSize: '13px' }}
                                         >
-                                            <RotateCcw size={16} />
+                                            <RotateCcw size={16} style={{ marginRight: '8px' }} />
                                             Restore
                                         </button>
                                         <button

@@ -12,6 +12,7 @@ export interface Section {
 }
 
 export interface HostsData {
+  version?: string; // Format version for compatibility
   entries: HostEntry[];
   sections: Section[];
 }
@@ -52,4 +53,14 @@ export interface DuplicateEntry {
     index: number;
     ip: string;
   }>;
+}
+
+// Remote hosts sources (e.g., GitHub raw, public blocklists)
+export interface RemoteSource {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  lastUpdated?: string;
+  lastStatus?: 'ok' | 'error';
 }

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState, memo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { HostEntry, PingResult } from '../types';
 import { ChevronRight, ChevronDown, Edit2, Trash2, Hash, Radio, Tag } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface EntryCardProps {
     entry: HostEntry;
@@ -10,12 +11,13 @@ interface EntryCardProps {
     onDelete: () => void;
 }
 
-export const EntryCard: React.FC<EntryCardProps> = ({
+export const EntryCard = memo<EntryCardProps>(({
     entry,
     onToggle,
     onEdit,
     onDelete
 }) => {
+    const { t } = useLanguage();
     const [pingResult, setPingResult] = useState<PingResult | null>(null);
     const [pinging, setPinging] = useState(false);
     const [expanded, setExpanded] = useState(false);
@@ -52,7 +54,7 @@ export const EntryCard: React.FC<EntryCardProps> = ({
         ? (entry.domains[0].length > 30
             ? entry.domains[0].substring(0, 27) + '...'
             : entry.domains[0])
-        : 'No domain';
+        : t('entryCard.noDomain');
 
     return (
         <div className="entry-card">
@@ -76,10 +78,10 @@ export const EntryCard: React.FC<EntryCardProps> = ({
                 </div>
                 <span className="entry-ip">{entry.ip}</span>
                 <div className="entry-actions" onClick={(e) => e.stopPropagation()}>
-                    <button className="btn-icon" onClick={onEdit} title="Edit">
+                    <button className="btn-icon" onClick={onEdit} title={t('common.edit')}>
                         <Edit2 size={16} />
                     </button>
-                    <button className="btn-icon delete" onClick={onDelete} title="Delete">
+                    <button className="btn-icon delete" onClick={onDelete} title={t('common.delete')}>
                         <Trash2 size={16} />
                     </button>
                 </div>
@@ -93,7 +95,7 @@ export const EntryCard: React.FC<EntryCardProps> = ({
                                 <Hash size={16} />
                             </span>
                             <div className="comment-text">
-                                <strong>All domains:</strong> {entry.domains.join(', ')}
+                                <strong>{t('entryCard.allDomains')}</strong> {entry.domains.join(', ')}
                             </div>
                         </div>
                     )}
@@ -141,16 +143,16 @@ export const EntryCard: React.FC<EntryCardProps> = ({
                         <span className="ping-icon">
                             <Radio size={18} />
                         </span>
-                        <span className="ping-label">Ping Test</span>
+                        <span className="ping-label">{t('entryCard.pingTest')}</span>
                         {pinging ? (
-                            <span className="ping-result pending">Testing...</span>
+                            <span className="ping-result pending">{t('entryCard.testing')}</span>
                         ) : pingResult ? (
                             <span className={`ping-result ${pingResult.success ? 'success' : 'error'}`}>
                                 {pingResult.message}
                             </span>
                         ) : (
                             <button className="btn-primary" style={{ padding: '6px 16px', fontSize: '13px' }} onClick={handlePing}>
-                                Test
+                                {t('common.test')}
                             </button>
                         )}
                     </div>
@@ -158,4 +160,4 @@ export const EntryCard: React.FC<EntryCardProps> = ({
             )}
         </div>
     );
-};
+});

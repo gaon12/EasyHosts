@@ -74,7 +74,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
                             disabled={importing}
                             style={{ width: '100%', marginBottom: '16px', justifyContent: 'center' }}
                         >
-                            <FolderOpen size={18} />
+                            <FolderOpen size={18} style={{ marginRight: '8px' }} />
                             Select JSON File
                         </button>
                         <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center' }}>

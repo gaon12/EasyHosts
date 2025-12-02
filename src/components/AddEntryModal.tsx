@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { HostEntry } from '../types';
 import { Search } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface AddEntryModalProps {
     isOpen: boolean;
@@ -16,39 +17,82 @@ export const AddEntryModal: React.FC<AddEntryModalProps> = ({
     onClose,
     onSave
 }) => {
+    const { t } = useLanguage();
     const [ip, setIp] = useState(entry?.ip || '');
     const [domains, setDomains] = useState(entry?.domains.join(' ') || '');
     const [comment, setComment] = useState(entry?.comment || '');
     const [tags, setTags] = useState(entry?.tags?.join(', ') || '');
-    const [errors, setErrors] = useState<{ ip?: string; domains?: string }>({});
+    const [errors, setErrors] = useState<{ ip?: string; domains?: string; tags?: string }>({});
     const [lookingUp, setLookingUp] = useState(false);
+    const ipInputRef = useRef<HTMLInputElement>(null);
+
+    // Auto-focus first input when modal opens
+    useEffect(() => {
+        if (isOpen && ipInputRef.current) {
+            setTimeout(() => ipInputRef.current?.focus(), 100);
+        }
+    }, [isOpen]);
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                handleClose();
+            } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                handleSave();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, ip, domains, comment, tags]);
+
+    const sanitizeInput = (input: string): string => {
+        // Remove any potentially dangerous characters while preserving valid input
+        return input.trim().replace(/[<>'"]/g, '');
+    };
 
     const validateIp = (ip: string): boolean => {
-        // Basic IPv4 validation
+        const sanitized = sanitizeInput(ip);
+
+        // IPv4 validation with strict checks
         const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-        if (ipv4Regex.test(ip)) {
-            const parts = ip.split('.');
-            return parts.every(part => parseInt(part) >= 0 && parseInt(part) <= 255);
+        if (ipv4Regex.test(sanitized)) {
+            const parts = sanitized.split('.');
+            return parts.every(part => {
+                const num = parseInt(part, 10);
+                return !isNaN(num) && num >= 0 && num <= 255;
+            });
         }
 
-        // Basic IPv6 validation (simplified)
-        const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
-        return ipv6Regex.test(ip);
+        // IPv6 validation (improved)
+        const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|::([fF]{4}(:0{1,4})?:)?((25[0-5]|(2[0-4]|1?[0-9])?[0-9])\.){3}(25[0-5]|(2[0-4]|1?[0-9])?[0-9]))$/;
+        return ipv6Regex.test(sanitized);
     };
 
     const validateDomains = (domains: string): boolean => {
-        if (!domains.trim()) return false;
+        const sanitized = sanitizeInput(domains);
+        if (!sanitized) return false;
 
-        const domainList = domains.trim().split(/\s+/);
+        const domainList = sanitized.split(/\s+/);
+        // Improved domain validation regex
         const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
-        return domainList.every(domain => domain.length > 0 && domain.length < 253 && domainRegex.test(domain));
+        return domainList.every(domain => {
+            // Check length constraints
+            if (domain.length === 0 || domain.length > 253) return false;
+            // Check each label (part between dots) is valid
+            const labels = domain.split('.');
+            return labels.every(label => label.length > 0 && label.length <= 63) && domainRegex.test(domain);
+        });
     };
 
     const handleDnsLookup = async () => {
         const domainList = domains.trim().split(/\s+/);
         if (domainList.length === 0 || !domainList[0]) {
-            setErrors({ ...errors, domains: 'Please enter a domain first' });
+            setErrors({ ...errors, domains: t('addEntry.errors.enterDomainFirst') });
             return;
         }
 
@@ -58,7 +102,7 @@ export const AddEntryModal: React.FC<AddEntryModalProps> = ({
             setIp(result);
             setErrors({ ...errors, ip: undefined });
         } catch (error) {
-            setErrors({ ...errors, ip: 'DNS lookup failed: ' + error });
+            setErrors({ ...errors, ip: t('addEntry.errors.dnsLookupFailed') + ' ' + error });
         } finally {
             setLookingUp(false);
         }
@@ -67,12 +111,18 @@ export const AddEntryModal: React.FC<AddEntryModalProps> = ({
     const handleSave = () => {
         const newErrors: { ip?: string; domains?: string } = {};
 
-        if (!validateIp(ip)) {
-            newErrors.ip = 'Please enter a valid IP address';
+        // Sanitize all inputs
+        const sanitizedIp = sanitizeInput(ip);
+        const sanitizedDomains = sanitizeInput(domains);
+        const sanitizedComment = sanitizeInput(comment);
+        const sanitizedTags = sanitizeInput(tags);
+
+        if (!validateIp(sanitizedIp)) {
+            newErrors.ip = t('addEntry.errors.invalidIp');
         }
 
-        if (!validateDomains(domains)) {
-            newErrors.domains = 'Please enter valid domain name(s)';
+        if (!validateDomains(sanitizedDomains)) {
+            newErrors.domains = t('addEntry.errors.invalidDomains');
         }
 
         if (Object.keys(newErrors).length > 0) {
@@ -80,16 +130,27 @@ export const AddEntryModal: React.FC<AddEntryModalProps> = ({
             return;
         }
 
-        const domainList = domains.trim().split(/\s+/);
-        const tagList = tags.trim()
-            ? tags.split(',').map(t => t.trim()).filter(t => t.length > 0)
+        const domainList = sanitizedDomains.split(/\s+/).filter(d => d.length > 0);
+        const tagList = sanitizedTags
+            ? sanitizedTags.split(',').map(t => t.trim()).filter(t => t.length > 0 && t.length <= 50)
             : undefined;
+
+        // Additional security: Limit array sizes
+        if (domainList.length > 100) {
+            setErrors({ domains: t('addEntry.errors.tooManyDomains') });
+            return;
+        }
+
+        if (tagList && tagList.length > 20) {
+            setErrors({ tags: t('addEntry.errors.tooManyTags') });
+            return;
+        }
 
         onSave({
             enabled: entry?.enabled ?? true,
-            ip,
+            ip: sanitizedIp,
             domains: domainList,
-            comment: comment.trim() || undefined,
+            comment: sanitizedComment || undefined,
             tags: tagList,
         });
 
@@ -120,17 +181,18 @@ export const AddEntryModal: React.FC<AddEntryModalProps> = ({
         >
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>{entry ? 'Edit Entry' : 'Add New Entry'}</h2>
-                    <p>Configure your hosts file entry</p>
+                    <h2>{entry ? t('addEntry.editTitle') : t('addEntry.title')}</h2>
+                    <p>{t('addEntry.subtitle')}</p>
                 </div>
 
                 <div className="form-group">
-                    <label className="form-label">IP Address</label>
+                    <label className="form-label">{t('addEntry.ipAddress')}</label>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <input
+                            ref={ipInputRef}
                             type="text"
                             className={`form-input ${errors.ip ? 'error' : ''}`}
-                            placeholder="127.0.0.1 or ::1"
+                            placeholder={t('addEntry.ipPlaceholder')}
                             value={ip}
                             onChange={(e) => {
                                 setIp(e.target.value);
@@ -155,16 +217,16 @@ export const AddEntryModal: React.FC<AddEntryModalProps> = ({
                     </div>
                     {errors.ip && <div className="error-message">{errors.ip}</div>}
                     <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                        Enter domain below, then click lookup to auto-fill IP (Domain → IP)
+                        {t('addEntry.lookupHelp')}
                     </div>
                 </div>
 
                 <div className="form-group">
-                    <label className="form-label">Domain(s)</label>
+                    <label className="form-label">{t('addEntry.domains')}</label>
                     <input
                         type="text"
                         className={`form-input ${errors.domains ? 'error' : ''}`}
-                        placeholder="example.com or multiple.com domains.com"
+                        placeholder={t('addEntry.domainsPlaceholder')}
                         value={domains}
                         onChange={(e) => {
                             setDomains(e.target.value);
@@ -173,41 +235,45 @@ export const AddEntryModal: React.FC<AddEntryModalProps> = ({
                     />
                     {errors.domains && <div className="error-message">{errors.domains}</div>}
                     <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                        Separate multiple domains with spaces
+                        {t('addEntry.domainsHelp')}
                     </div>
                 </div>
 
                 <div className="form-group">
-                    <label className="form-label">Comment (Optional)</label>
+                    <label className="form-label">{t('addEntry.comment')}</label>
                     <input
                         type="text"
                         className="form-input"
-                        placeholder="Local development server"
+                        placeholder={t('addEntry.commentPlaceholder')}
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                     />
                 </div>
 
                 <div className="form-group">
-                    <label className="form-label">Tags (Optional)</label>
+                    <label className="form-label">{t('addEntry.tags')}</label>
                     <input
                         type="text"
-                        className="form-input"
-                        placeholder="dev, api, frontend"
+                        className={`form-input ${errors.tags ? 'error' : ''}`}
+                        placeholder={t('addEntry.tagsPlaceholder')}
                         value={tags}
-                        onChange={(e) => setTags(e.target.value)}
+                        onChange={(e) => {
+                            setTags(e.target.value);
+                            setErrors({ ...errors, tags: undefined });
+                        }}
                     />
+                    {errors.tags && <div className="error-message">{errors.tags}</div>}
                     <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '4px' }}>
-                        Separate multiple tags with commas
+                        {t('addEntry.tagsHelp')}
                     </div>
                 </div>
 
                 <div className="modal-actions">
                     <button className="btn-secondary" onClick={handleClose}>
-                        Cancel
+                        {t('common.cancel')}
                     </button>
                     <button className="btn-primary" onClick={handleSave}>
-                        {entry ? 'Save Changes' : 'Add Entry'}
+                        {entry ? t('addEntry.saveChanges') : t('addEntry.addEntry')}
                     </button>
                 </div>
             </div>

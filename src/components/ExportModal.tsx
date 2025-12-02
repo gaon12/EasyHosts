@@ -81,7 +81,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, hostsData, onC
                         disabled={exporting}
                         style={{ width: '100%', justifyContent: 'center' }}
                     >
-                        <Package size={18} />
+                        <Package size={18} style={{ marginRight: '8px' }} />
                         Export as JSON
                     </button>
                     <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '-8px' }}>
@@ -92,9 +92,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({ isOpen, hostsData, onC
                         className="btn-secondary"
                         onClick={handleExportHosts}
                         disabled={exporting}
-                        style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '8px' }}
+                        style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center' }}
                     >
-                        <FileText size={18} />
+                        <FileText size={18} style={{ marginRight: '8px' }} />
                         Export as Hosts File
                     </button>
                     <p style={{ fontSize: '13px', color: 'var(--text-tertiary)', marginTop: '-8px' }}>

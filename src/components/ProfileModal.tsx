@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { Profile, ProfileList, HostsData } from '../types';
+import { Profile, HostsData } from '../types';
 import { Plus, Check, Trash2, FileText } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -30,13 +29,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
     const loadProfiles = async () => {
         try {
-            const profileList = await invoke<ProfileList>('get_profiles');
-            setProfiles(profileList.profiles);
-            setActiveProfileId(profileList.activeProfileId);
+            const raw = localStorage.getItem('profiles');
+            if (raw) {
+                const parsed: Profile[] = JSON.parse(raw);
+                setProfiles(parsed);
+            } else {
+                setProfiles([]);
+            }
+            const activeId = localStorage.getItem('activeProfileId');
+            setActiveProfileId(activeId);
         } catch (error) {
-            console.error('Failed to load profiles:', error);
-            // Initialize with empty list if not implemented yet
+            console.error('Failed to load profiles from localStorage:', error);
             setProfiles([]);
+            setActiveProfileId(null);
         }
     };
 
@@ -44,14 +49,25 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         if (!newProfileName.trim()) return;
 
         try {
-            const newProfile: Omit<Profile, 'id' | 'createdAt' | 'updatedAt'> = {
-                name: newProfileName,
-                description: newProfileDescription || undefined,
-                hostsData: currentData
+            const id =
+                typeof crypto !== 'undefined' && 'randomUUID' in crypto
+                    ? crypto.randomUUID()
+                    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+            const now = new Date().toISOString();
+            const newProfile: Profile = {
+                id,
+                name: newProfileName.trim(),
+                description: newProfileDescription.trim() || undefined,
+                hostsData: JSON.parse(JSON.stringify(currentData)),
+                createdAt: now,
+                updatedAt: now,
             };
 
-            const createdProfile = await invoke<Profile>('create_profile', { profile: newProfile });
-            setProfiles([...profiles, createdProfile]);
+            const nextProfiles = [...profiles, newProfile];
+            setProfiles(nextProfiles);
+            localStorage.setItem('profiles', JSON.stringify(nextProfiles));
+
             setNewProfileName('');
             setNewProfileDescription('');
             setShowCreateForm(false);
@@ -62,8 +78,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
     const handleActivateProfile = async (profile: Profile) => {
         try {
-            await invoke('set_active_profile', { profileId: profile.id });
             setActiveProfileId(profile.id);
+            localStorage.setItem('activeProfileId', profile.id);
             onProfileLoad(profile);
             onClose();
         } catch (error) {
@@ -75,10 +91,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         if (!confirm('Are you sure you want to delete this profile?')) return;
 
         try {
-            await invoke('delete_profile', { profileId });
-            setProfiles(profiles.filter(p => p.id !== profileId));
+            const nextProfiles = profiles.filter(p => p.id !== profileId);
+            setProfiles(nextProfiles);
+            localStorage.setItem('profiles', JSON.stringify(nextProfiles));
+
             if (activeProfileId === profileId) {
                 setActiveProfileId(null);
+                localStorage.removeItem('activeProfileId');
             }
         } catch (error) {
             alert('Failed to delete profile: ' + error);
@@ -102,7 +121,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                             onClick={() => setShowCreateForm(true)}
                             style={{ width: '100%', justifyContent: 'center' }}
                         >
-                            <Plus size={18} />
+                            <Plus size={18} style={{ marginRight: '8px' }} />
                             Create New Profile
                         </button>
                     ) : (

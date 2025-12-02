@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import { Section } from '../types';
 import { Hash } from 'lucide-react';
 
@@ -7,7 +7,7 @@ interface SectionHeaderProps {
     onToggle: () => void;
 }
 
-export const SectionHeader: React.FC<SectionHeaderProps> = ({ section, onToggle }) => {
+export const SectionHeader = memo<SectionHeaderProps>(({ section, onToggle }) => {
     return (
         <div className="section-header">
             <button
@@ -22,4 +22,4 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({ section, onToggle 
             </div>
         </div>
     );
-};
+});

@@ -1,4 +1,6 @@
 import React from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
+import { getPlatform, getHostsFilePath } from '../utils/platform';
 
 interface PermissionModalProps {
     isOpen: boolean;
@@ -9,14 +11,46 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
     isOpen,
     onContinueAnyway
 }) => {
+    const { t } = useLanguage();
+    const platform = getPlatform();
+    const hostsPath = getHostsFilePath(platform);
+
     if (!isOpen) return null;
+
+    // Get platform-specific description
+    const getDescription = () => {
+        switch (platform) {
+            case 'windows':
+                return t('permission.descriptionWindows');
+            case 'linux':
+                return t('permission.descriptionLinux');
+            case 'macos':
+                return t('permission.descriptionMac');
+            default:
+                return t('permission.description');
+        }
+    };
+
+    // Get platform-specific requirement message
+    const getRequirement = () => {
+        switch (platform) {
+            case 'windows':
+                return t('permission.requirementAdminWindows');
+            case 'linux':
+                return t('permission.requirementAdminLinux');
+            case 'macos':
+                return t('permission.requirementAdminMac');
+            default:
+                return t('permission.requirementAdmin');
+        }
+    };
 
     return (
         <div className="modal-overlay">
             <div className="modal-content">
                 <div className="modal-header">
-                    <h2>⚠️ Administrator Privileges Required</h2>
-                    <p>EasyHosts needs administrator access to modify the hosts file</p>
+                    <h2>⚠️ {t('permission.title')}</h2>
+                    <p>{getDescription()}</p>
                 </div>
 
                 <div style={{
@@ -31,16 +65,21 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
                         lineHeight: '1.6',
                         marginBottom: '12px'
                     }}>
-                        The hosts file is a system file that requires administrator/root permissions to modify.
+                        {t('permission.hostsFilePath')} <code style={{
+                            background: 'var(--bg-card)',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontFamily: 'monospace'
+                        }}>{hostsPath}</code>
                     </p>
                     <p style={{
                         fontSize: '14px',
                         color: 'var(--text-primary)',
                         fontWeight: 600,
                         lineHeight: '1.6',
-                        marginBottom: '12px'
+                        marginBottom: '8px'
                     }}>
-                        To edit the hosts file, please restart this application as Administrator:
+                        {t('permission.requirements')}
                     </p>
                     <ul style={{
                         fontSize: '14px',
@@ -48,24 +87,14 @@ export const PermissionModal: React.FC<PermissionModalProps> = ({
                         marginLeft: '20px',
                         lineHeight: '1.8'
                     }}>
-                        <li>Close this application</li>
-                        <li>Right-click on EasyHosts</li>
-                        <li>Select "Run as administrator"</li>
-                        <li>Click "Yes" on the UAC prompt</li>
+                        <li>{getRequirement()}</li>
+                        <li>{t('permission.requirementRead')}</li>
                     </ul>
-                    <p style={{
-                        fontSize: '13px',
-                        color: 'var(--text-tertiary)',
-                        marginTop: '12px',
-                        fontStyle: 'italic'
-                    }}>
-                        Without admin privileges, you can view entries and test ping, but cannot save changes.
-                    </p>
                 </div>
 
                 <div className="modal-actions">
                     <button className="btn-primary" onClick={onContinueAnyway} style={{ flex: 1 }}>
-                        OK, I Understand
+                        {t('permission.continueReadOnly')}
                     </button>
                 </div>
             </div>

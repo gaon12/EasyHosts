@@ -1,5 +1,6 @@
-import React from 'react';
+import { memo } from 'react';
 import { Search, Plus, X } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SearchBarProps {
     searchQuery: string;
@@ -10,7 +11,7 @@ interface SearchBarProps {
     onToggleTag: (tag: string) => void;
 }
 
-export const SearchBar: React.FC<SearchBarProps> = ({
+export const SearchBar = memo<SearchBarProps>(({
     searchQuery,
     onSearchChange,
     onAddEntry,
@@ -18,6 +19,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     selectedTags,
     onToggleTag
 }) => {
+    const { t } = useLanguage();
     return (
         <div style={{ marginBottom: '20px' }}>
             <div className="search-bar">
@@ -28,14 +30,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     <input
                         type="text"
                         className="search-input"
-                        placeholder="Search IP or domain..."
+                        placeholder={t('searchBar.placeholder')}
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
                     />
                 </div>
                 <button className="btn-primary" onClick={onAddEntry}>
                     <Plus size={18} />
-                    <span>Add Entry</span>
+                    <span>{t('searchBar.addEntry')}</span>
                 </button>
             </div>
 
@@ -57,7 +59,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                         fontWeight: 600,
                         marginRight: '4px'
                     }}>
-                        Filter by tags:
+                        {t('searchBar.filterByTags')}
                     </span>
                     {allTags.map(tag => {
                         const isSelected = selectedTags.includes(tag);
@@ -86,7 +88,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                     alignItems: 'center',
                                     gap: '4px'
                                 }}
-                                title={isEtc ? 'Untagged entries (auto-generated)' : undefined}
+                                title={isEtc ? t('searchBar.untaggedEntries') : undefined}
                             >
                                 {tag}
                                 {isSelected && <X size={14} />}
@@ -108,11 +110,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                                 transition: 'var(--transition)'
                             }}
                         >
-                            Clear filters
+                            {t('searchBar.clearFilters')}
                         </button>
                     )}
                 </div>
             )}
         </div>
     );
-};
+});
