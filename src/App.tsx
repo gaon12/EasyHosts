@@ -105,7 +105,14 @@ function App() {
   }, [historyIndex, history]);
 
   useEffect(() => {
-    const hasTauri = typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
+    const hasTauri =
+      typeof window !== 'undefined' &&
+      (
+        (window as any).__TAURI__ !== undefined ||
+        (window as any).__TAURI_IPC__ !== undefined ||
+        (window as any).__TAURI_INTERNALS__ !== undefined ||
+        window.navigator?.userAgent.includes('Tauri')
+      );
 
     if (!hasTauri) {
       setWebviewAvailable(false);
@@ -147,7 +154,14 @@ function App() {
 
   // Listen for tray events to quickly cycle profiles
   useEffect(() => {
-    const hasTauri = typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
+    const hasTauri =
+      typeof window !== 'undefined' &&
+      (
+        (window as any).__TAURI__ !== undefined ||
+        (window as any).__TAURI_IPC__ !== undefined ||
+        (window as any).__TAURI_INTERNALS__ !== undefined ||
+        window.navigator?.userAgent.includes('Tauri')
+      );
     if (!hasTauri) {
       return;
     }
@@ -462,23 +476,16 @@ function App() {
     return true;
   });
 
-  if (!webviewAvailable) {
-    return (
-      <div className="app-container">
-        <div className="empty-state">
-          <h3>{t('error.webviewMissingTitle')}</h3>
-          <p>{t('error.webviewMissingDescription')}</p>
-        </div>
-      </div>
-    );
-  }
-
   const isLargeList = hostsData.entries.length > 500;
   const useCompactView = compactView || isLargeList;
 
   // SSID-based automatic profile switching
   useEffect(() => {
-    const hasTauri = typeof window !== 'undefined' && (window as any).__TAURI__ !== undefined;
+    const hasTauri = typeof window !== 'undefined' && (
+      (window as any).__TAURI__ !== undefined ||
+      (window as any).__TAURI_IPC__ !== undefined ||
+      (window as any).__TAURI_INTERNALS__ !== undefined
+    );
     if (!hasTauri) {
       return;
     }
@@ -533,6 +540,17 @@ function App() {
       }
     };
   }, [autoSwitchBySsid, t]);
+
+  if (!webviewAvailable) {
+    return (
+      <div className="app-container">
+        <div className="empty-state">
+          <h3>{t('error.webviewMissingTitle')}</h3>
+          <p>{t('error.webviewMissingDescription')}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
